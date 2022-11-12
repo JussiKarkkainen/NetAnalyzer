@@ -1,4 +1,5 @@
 #include "headers.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,10 +15,12 @@ void analyze_tcp_packet(uint8_t*, ssize_t);
 void analyze_udp_packet(uint8_t*, ssize_t);
 void analyze_icmp_packet(uint8_t*, ssize_t);
 void analyze_ethernet_frame(uint8_t*, ssize_t);
+void analyze_ip_header(struct ip_header*);
 
-// Create a raw socket and analyze packet
 int main() {
-   
+    
+    fill_ip_table();   
+
     uint8_t *buffer = malloc(65535); // Largest possible tcp packet
     memset(buffer, 0, 65536);
     struct sockaddr saddr;
@@ -50,13 +53,17 @@ void process_packet(uint8_t *buffer, ssize_t size) {
     printf("----------- Start of packet ----------- \n");
     analyze_ethernet_frame(buffer, size);
     struct ip_header *iphdr = (struct ip_header*)(buffer + sizeof(struct ethernet_header));
+    analyze_ip_header(iphdr);
     switch (iphdr->protocol) {
         case 0x06:
             analyze_tcp_packet(buffer, size);
+            break;
         case 0x11:
             analyze_udp_packet(buffer, size);
+            break;
         case 0x01: 
             analyze_icmp_packet(buffer, size);
+            break;
         default:
             printf("Unknown protocol type %x\n", iphdr->protocol);
     }
@@ -78,9 +85,27 @@ void analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
     printf("\n");
 }
 
-void analyze_ip_packet(uint8_t *buffer, ssize_t size) {
+void analyze_ip_header(struct ip_header *iphdr) {
+    struct sockaddr_in src_addr, dst_addr;
+    src_addr.sin_addr.s_addr = iphdr->src_addr;
+    dst_addr.sin_addr.s_addr = iphdr->dst_addr;
     printf("\n");
     printf("----------- IP header -----------\n");
+    printf("|Version|                -> %d\n", iphdr->version);
+    printf("|IHL|                    -> %d Bytes\n", (iphdr->ihl)*4);
+    printf("|DSCP|                   -> %d\n", iphdr->dscp);
+    printf("|ECN|                    -> %d\n", iphdr->ecn);
+    printf("|Lenght|                 -> %d\n", iphdr->len); 
+    printf("|Identification|         -> %d\n", iphdr->identification);
+    printf("|Reserved Flag|          -> %d\n", iphdr->reserved_flag);
+    printf("|DF Flag|                -> %d\n", iphdr->df);
+    printf("|MF Flag|                -> %d\n", iphdr->mf);
+    printf("|Fragment Offset|        -> %d\n", iphdr->frag_offset);
+    printf("|TTL|                    -> %d\n", iphdr->ttl);
+    printf("|Protocol|               -> %d [%s]\n", iphdr->protocol, get_ip_protocol(iphdr->protocol));
+    printf("|Checksum|               -> %d\n", ntohs(iphdr->cksum));
+    printf("|Source IP Address|      -> %s\n", inet_ntoa(src_addr.sin_addr));
+    printf("|Destination IP Address| -> %s\n", inet_ntoa(dst_addr.sin_addr));
     printf("----------- End of IP header -----------\n");
     printf("\n");
 }
@@ -96,8 +121,13 @@ void analyze_tcp_packet(uint8_t *buffer, ssize_t size) {
 }
 
 void analyze_udp_packet(uint8_t *buffer, ssize_t size) {
+    struct udp_header *udphdr = (struct udp_header*)(buffer + sizeof(struct ethernet_header) + sizeof(struct ip_header));
     printf("\n");
     printf("----------- UDP header -----------\n");
+    printf("|Source Port|            -> %u\n", ntohs(udphdr->src_port));
+    printf("|Destination Port|       -> %u\n", ntohs(udphdr->dst_port));
+    printf("|Lenght|                 -> %u\n", ntohs(udphdr->lenght));
+    printf("|Checksum|               -> %u\n", ntohs(udphdr->cksum));
     printf("----------- End of UDP header -----------\n");
     printf("\n");
 }

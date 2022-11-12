@@ -10,7 +10,9 @@ struct ip_header {
     int ecn : 2;
     uint16_t len;
     uint16_t identification;
-    int flags : 3;
+    int reserved_flag : 1;
+    int df : 1;
+    int mf : 1;
     int frag_offset : 13;
     uint8_t ttl;
     uint8_t protocol;
