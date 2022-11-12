@@ -118,7 +118,7 @@ void analyze_tcp_packet(uint8_t *buffer, ssize_t size) {
     printf("|Destination Port|       -> %u\n", ntohs(tcphdr->dst_port));
     printf("|Sequence Number|        -> %u\n", ntohl(tcphdr->sequence_num));
     printf("|Acknowledgment Number|  -> %u\n", ntohl(tcphdr->ack_num));
-    printf("|Data Offset|            -> %d Bytes\n", (unsigned int)(tcphdr->data_offset)*4); 
+    printf("|Data Offset|            -> %d Bytes\n", (tcphdr->data_offset)*4); 
     printf("|Reserved|               -> %u\n", (unsigned int)tcphdr->reserved);
     printf("|NS|                     -> %u\n", (unsigned int)tcphdr->ns);
     printf("|CWR|                    -> %u\n", (unsigned int)tcphdr->cwr);
@@ -149,8 +149,13 @@ void analyze_udp_packet(uint8_t *buffer, ssize_t size) {
 }
 
 void analyze_icmp_packet(uint8_t *buffer, ssize_t size) {
+    struct icmp_header *icmphdr = (struct icmp_header*)(buffer + sizeof(struct ethernet_header) + sizeof(struct ip_header));
     printf("\n");
     printf("----------- ICMP header -----------\n");
+    printf("|Type|                   -> %u\n", icmphdr->type);
+    printf("|Code|                   -> %u\n", icmphdr->code);
+    printf("|Checksum|               -> %u\n", icmphdr->cksum);
+    printf("|Rest|                   -> %u\n", icmphdr->rest);
     printf("----------- End of ICMP header -----------\n");
     printf("\n");
 }

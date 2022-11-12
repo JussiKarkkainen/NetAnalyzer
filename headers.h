@@ -40,15 +40,21 @@ struct tcp_header {
     uint16_t window_size;
     uint16_t cksum;
     uint16_t urgent_pointer;
-};
+}__attribute__((packed));
 
 struct udp_header {
     uint16_t src_port;
     uint16_t dst_port;
     uint16_t lenght;
     uint16_t cksum;
+}__attribute__((packed));
 
-};
+struct icmp_header {
+    uint8_t type;
+    uint8_t code;
+    uint16_t cksum;
+    uint32_t rest;
+}__attribute__((packed));
 
 struct ethernet_header {
     uint8_t saddr[6];
