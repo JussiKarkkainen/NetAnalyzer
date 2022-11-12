@@ -28,7 +28,15 @@ struct tcp_header {
     uint32_t ack_num;
     int data_offset : 4;
     int reserved : 3;
-    int flags : 9;
+    int ns : 1;
+    int cwr : 1;
+    int ece : 1;
+    int urg : 1;
+    int ack : 1;
+    int psh : 1;
+    int rst : 1;
+    int syn : 1;
+    int fin : 1;
     uint16_t window_size;
     uint16_t cksum;
     uint16_t urgent_pointer;

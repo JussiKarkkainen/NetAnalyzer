@@ -114,8 +114,24 @@ void analyze_tcp_packet(uint8_t *buffer, ssize_t size) {
     struct tcp_header *tcphdr = (struct tcp_header*)(buffer + sizeof(struct ethernet_header) + sizeof(struct ip_header));
     printf("\n");
     printf("----------- TCP header -----------\n");
-    printf("%d\n", ntohl(tcphdr->sequence_num));
-
+    printf("|Source Port|            -> %u\n", ntohs(tcphdr->src_port));
+    printf("|Destination Port|       -> %u\n", ntohs(tcphdr->dst_port));
+    printf("|Sequence Number|        -> %u\n", ntohl(tcphdr->sequence_num));
+    printf("|Acknowledgment Number|  -> %u\n", ntohl(tcphdr->ack_num));
+    printf("|Data Offset|            -> %d Bytes\n", (unsigned int)(tcphdr->data_offset)*4); 
+    printf("|Reserved|               -> %u\n", (unsigned int)tcphdr->reserved);
+    printf("|NS|                     -> %u\n", (unsigned int)tcphdr->ns);
+    printf("|CWR|                    -> %u\n", (unsigned int)tcphdr->cwr);
+    printf("|ECE|                    -> %u\n", (unsigned int)tcphdr->ece);
+    printf("|URG|                    -> %u\n", (unsigned int)tcphdr->urg);
+    printf("|ACK|                    -> %u\n", (unsigned int)tcphdr->ack);
+    printf("|PSH|                    -> %u\n", (unsigned int)tcphdr->psh);
+    printf("|RST|                    -> %u\n", (unsigned int)tcphdr->rst);
+    printf("|SYN|                    -> %u\n", (unsigned int)tcphdr->syn);
+    printf("|FIN|                    -> %u\n", (unsigned int)tcphdr->fin);
+    printf("|Window Size|            -> %u\n", ntohs(tcphdr->window_size));
+    printf("|Checksum|               -> %u\n", ntohs(tcphdr->cksum));
+    printf("|Urgent Pointer|         -> %u\n", tcphdr->urgent_pointer);
     printf("----------- End of TCP header -----------\n");
     printf("\n");
 }
