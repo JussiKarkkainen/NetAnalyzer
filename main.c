@@ -15,7 +15,7 @@ void analyze_tcp_packet(uint8_t*, ssize_t);
 void analyze_udp_packet(uint8_t*, ssize_t);
 void analyze_icmp_packet(uint8_t*, ssize_t);
 void analyze_ethernet_frame(uint8_t*, ssize_t);
-void analyze_ip_header(struct ip_header*);
+void analyze_ip_header(uint8_t*, ssize_t);
 
 int main() {
     
@@ -42,7 +42,6 @@ int main() {
         }
         process_packet(buffer, size);
         free(buffer);
-        return 0;   // remove soon
     }
     close(raw_sock);
     return 0;
@@ -52,7 +51,7 @@ void process_packet(uint8_t *buffer, ssize_t size) {
     printf("----------- Start of packet ----------- \n");
     analyze_ethernet_frame(buffer, size);
     struct ip_header *iphdr = (struct ip_header*)(buffer + sizeof(struct ethernet_header));
-    analyze_ip_header(iphdr);
+    analyze_ip_header(buffer, size);
     switch (iphdr->protocol) {
         case 0x06:
             analyze_tcp_packet(buffer, size);
@@ -84,7 +83,8 @@ void analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
     printf("\n");
 }
 
-void analyze_ip_header(struct ip_header *iphdr) {
+void analyze_ip_header(uint8_t *buffer, ssize_t size) {
+    struct ip_header *iphdr = (struct ip_header*)(buffer + sizeof(struct ethernet_header));
     struct sockaddr_in src_addr, dst_addr;
     src_addr.sin_addr.s_addr = iphdr->src_addr;
     dst_addr.sin_addr.s_addr = iphdr->dst_addr;
@@ -104,7 +104,7 @@ void analyze_ip_header(struct ip_header *iphdr) {
     printf("|Protocol|               -> %d [%s]\n", iphdr->protocol, get_ip_protocol(iphdr->protocol));
     printf("|Checksum|               -> %d\n", ntohs(iphdr->cksum));
     printf("|Source IP Address|      -> %s\n", inet_ntoa(src_addr.sin_addr));
-    printf("|Destination IP Address| -> %s\n", inet_ntoa(dst_addr.sin_addr));
+    printf("|Destination IP Address| -> %s\n", inet_ntoa(dst_addr.sin_addr)); 
     printf("----------- End of IP header -----------\n");
     printf("\n");
 }
@@ -131,13 +131,12 @@ void analyze_tcp_packet(uint8_t *buffer, ssize_t size) {
     printf("|Window Size|            -> %u\n", ntohs(tcphdr->window_size));
     printf("|Checksum|               -> %u\n", ntohs(tcphdr->cksum));
     printf("|Urgent Pointer|         -> %u\n", tcphdr->urgent_pointer);
-    printf("----------- End of TCP header -----------\n");
     printf("\n");
-     
     int hdrlen = sizeof(struct ethernet_header) + sizeof(struct ip_header) + tcphdr->data_offset*4; 
     printf("----------- TCP Data Dump -----------\n");
     print_data(buffer + hdrlen, size - hdrlen); 
     printf("----------- End of TCP Data Dump -----------\n");
+    printf("----------- End of TCP header -----------\n");
 }
 
 void analyze_udp_packet(uint8_t *buffer, ssize_t size) {
@@ -148,6 +147,10 @@ void analyze_udp_packet(uint8_t *buffer, ssize_t size) {
     printf("|Destination Port|       -> %u\n", ntohs(udphdr->dst_port));
     printf("|Lenght|                 -> %u\n", ntohs(udphdr->lenght));
     printf("|Checksum|               -> %u\n", ntohs(udphdr->cksum));
+    int hdrlen = sizeof(struct ethernet_header) + sizeof(struct ip_header) + sizeof(struct udp_header); 
+    printf("----------- UDP Data Dump -----------\n");
+    print_data(buffer + hdrlen, size - hdrlen); 
+    printf("----------- End of UDP Data Dump -----------\n");
     printf("----------- End of UDP header -----------\n");
     printf("\n");
 }

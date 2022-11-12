@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <netinet/in.h> 
+#include <netdb.h>
 
 struct ip_proto_dict {
     char *key;
