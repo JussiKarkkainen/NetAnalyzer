@@ -20,11 +20,7 @@ void analyze_ip_header(struct ip_header*);
 int main() {
     
     fill_ip_table();   
-
-    uint8_t *buffer = malloc(65535); // Largest possible tcp packet
-    memset(buffer, 0, 65536);
     struct sockaddr saddr;
-
     int raw_sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     
     if (raw_sock < 0) {
@@ -34,6 +30,9 @@ int main() {
     printf("Raw Socket succesfully created\n");
 
     while (1) {
+        uint8_t *buffer = malloc(65535); // Largest possible tcp packet
+        memset(buffer, 0, 65536);
+
         socklen_t addrlen = sizeof(saddr);
         ssize_t size = recvfrom(raw_sock, buffer, 65536, 0, &saddr, &addrlen);
 
@@ -42,9 +41,9 @@ int main() {
             return 1;        
         }
         process_packet(buffer, size);
+        free(buffer);
         return 0;   // remove soon
     }
-    free(buffer);
     close(raw_sock);
     return 0;
 }
@@ -134,6 +133,11 @@ void analyze_tcp_packet(uint8_t *buffer, ssize_t size) {
     printf("|Urgent Pointer|         -> %u\n", tcphdr->urgent_pointer);
     printf("----------- End of TCP header -----------\n");
     printf("\n");
+     
+    int hdrlen = sizeof(struct ethernet_header) + sizeof(struct ip_header) + tcphdr->data_offset*4; 
+    printf("----------- TCP Data Dump -----------\n");
+    print_data(buffer + hdrlen, size - hdrlen); 
+    printf("----------- End of TCP Data Dump -----------\n");
 }
 
 void analyze_udp_packet(uint8_t *buffer, ssize_t size) {
