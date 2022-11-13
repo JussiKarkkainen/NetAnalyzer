@@ -49,18 +49,18 @@ void print_data(uint8_t *data, ssize_t size) {
             printf(" %02x", data[i]);
 
 		if (i==size-1) {
-			for (j=0;j<15-i%16;j++) {
+		    for (j=0;j<15-i%16;j++) {
 			    printf("   "); 
             }
-			printf("    ");
-			for (j=i-i%16; j<=i; j++) {
-				if (data[j]>=32 && data[j]<=128) {
-				  printf("%c",(unsigned char)data[j]);
+		    printf("    ");
+		    for (j=i-i%16; j<=i; j++) {
+			    if (data[j]>=32 && data[j]<=128) {
+				    printf("%c",(unsigned char)data[j]);
 				}
-				else {
-				  printf(".");
-				}
-			}
+			    else {
+				    printf(".");
+			    }
+		    }
             printf("\n");
         }
     }
