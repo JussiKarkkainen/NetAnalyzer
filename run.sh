@@ -1,7 +1,7 @@
-if [ -e a.out ]
+if [ -e netanalyzer ]
     then
-        rm a.out
+        rm netanalyzer
 fi
-gcc main.c sniffer.c inject.c utils.c
-sudo setcap cap_net_admin,cap_net_raw=eip a.out
-./a.out
+gcc main.c sniffer.c inject.c utils.c -o netanalyzer
+sudo setcap cap_net_admin,cap_net_raw=eip netanalyzer
+./netanalyzer $1

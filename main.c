@@ -7,6 +7,10 @@
 
 int main(int argc, char *argv[]) {
     int opt, ret;
+    if (argc == 1) {
+        printf("Invalid number of arguments.\nUsage: %s [-si]\n", argv[0]);
+        return -1;
+    }
     while ((opt = getopt(argc, argv, "si")) != -1) {
         switch (opt) {
             case 's':
@@ -16,7 +20,7 @@ int main(int argc, char *argv[]) {
                 ret = initialize_inject();
                 break;
             default:
-                printf("Usage: %s [-si]\n", argv[0]);
+                printf("Invalid arguments.\nUsage: %s [-si]\n", argv[0]);
                 return -1;
         }
     return 0;
