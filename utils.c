@@ -47,8 +47,8 @@ void print_data(uint8_t *data, ssize_t size) {
         }
         if (i%16==0) printf("    ");
             printf(" %02x", data[i]);
-
-		if (i==size-1) {
+		
+        if (i==size-1) {
 		    for (j=0;j<15-i%16;j++) {
 			    printf("   "); 
             }
