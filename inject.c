@@ -48,11 +48,44 @@ int initialize_inject(char *gateway_ip, char *target_ip) {
     
     printf("Hello %s\n", device);
     
+	if ((handle = pcap_open_live(device, 1500, 0, 2000, errbuf)) == NULL) {
+		fprintf(stderr, "An error occurred while opening the device.\n%s", errbuf);
+		exit (1);
+	}
+
+	if (strlen(errbuf) > 0) {
+		fprintf (stderr, "Warning: %s", errbuf);
+		errbuf[0] = 0;
+	}
+
+	if (pcap_datalink(handle) != DLT_EN10MB) {
+		fprintf (stderr, "This program only supports Ethernet cards!\n");
+		exit(1);
+	}
+
+	/* Compiling the filter for ARP packet only */
+	if (pcap_compile(handle, &fp, filter, 0, PCAP_NETMASK_UNKNOWN) == -1) {
+		fprintf (stderr, "%s", pcap_geterr (handle));
+		exit(1);
+	}
+
+	/* Setting the filter for the sniffing session */
+	if (pcap_setfilte(handle, &fp) == -1) {
+		fprintf (stderr, "%s", pcap_geterr(handle));
+		exit(1);
+	}
+
+	/* Free the BPF program */
+	pcap_freecode (&fp);
+
+
     
     // Get MAC address of both targets.
     struct libnet_ether_addr target_mac_1 = get_mac_addr(target_one_ip)
     struct libnet_ether_addr target_mac_2 = get_mac_addr(target_two_ip)
 
+    
+    
 
     return 0;
 }
@@ -92,8 +125,14 @@ struct libnet_ether_addr get_mac_addr(uint32_t ip_addr) {
         exit(1);
     }
     
+    printf("Sent ARP request, analyzing replies\n");
     
+    if ((s = pcap_loop(handle, -1, process_reply, NULL)) < 0) {
+        if (s == -1) {
+            fprintf(stderr, "%s", pcap_geterr(handle));
+            exit(1);
+        }
+    }
+    libnet_clear_packet(l);
 
-
-    return mac_addr
 }
