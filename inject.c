@@ -7,7 +7,11 @@
 
 libnet_t *l;
 
-struct libnet_ether_addr get_mac_addr(uint32_t);
+pcap_t *handle;
+uint32_t ip_tmp;
+
+void process_packet(void); 
+void get_mac_addr(uint32_t, struct libnet_ether_addr*);
 
 int initialize_inject(char *gateway_ip, char *target_ip) {
     printf("Initializing inject\n");
@@ -17,7 +21,9 @@ int initialize_inject(char *gateway_ip, char *target_ip) {
     uint32_t target_one_ip;
     uint32_t target_two_ip;
     struct libnet_ether_addr *own_mac;
+    struct bpf_program fp;
     uint32_t ip; 
+    char *filter = "arp";
 
     if ((l = libnet_init(LIBNET_LINK, device, errbuf)) ==  0) {
         fprintf(stderr, "Error in libnet_init\n%s", errbuf);
@@ -70,45 +76,40 @@ int initialize_inject(char *gateway_ip, char *target_ip) {
 	}
 
 	/* Setting the filter for the sniffing session */
-	if (pcap_setfilte(handle, &fp) == -1) {
+	if (pcap_setfilter(handle, &fp) == -1) {
 		fprintf (stderr, "%s", pcap_geterr(handle));
 		exit(1);
 	}
 
-	/* Free the BPF program */
-	pcap_freecode (&fp);
-
-
+	pcap_freecode(&fp);
     
     // Get MAC address of both targets.
-    struct libnet_ether_addr target_mac_1 = get_mac_addr(target_one_ip)
-    struct libnet_ether_addr target_mac_2 = get_mac_addr(target_two_ip)
-
-    
+    get_mac_addr(target_one_ip, own_mac);
+    get_mac_addr(target_two_ip, own_mac);
     
 
     return 0;
 }
 
-struct libnet_ether_addr get_mac_addr(uint32_t ip_addr) {
+void get_mac_addr(uint32_t ip_addr, struct libnet_ether_addr *mac) {
     // Send an ARP request to given IP address
     libnet_ptag_t arp = 0, eth = 0;
-    
+    int s;    
     uint8_t broadcast_mac[6];
     memset(broadcast_mac, 0xFF, ETHER_ADDR_LEN);
 
     arp = libnet_autobuild_arp(ARPOP_REQUEST, 
                                (uint8_t *) mac,
-                               (uint8_t *) &ip,
+                               (uint8_t *) &ip_addr,
                                (uint8_t *) broadcast_mac,
-                               (uint8_t *) ip_addr,
+                               (uint8_t *) &ip_tmp,
                                            l);
     if (arp == -1) {
         fprintf(stderr, "Error in creating arp packet: %s\n", libnet_geterror(l));
         exit(1);
     }
 
-    eth = libnet_build_ethernet((uint8_t *) broadcast_ether,
+    eth = libnet_build_ethernet((uint8_t *) broadcast_mac,
                                (uint8_t *) mac,
                                ETHERTYPE_ARP,
                                NULL,
@@ -127,12 +128,20 @@ struct libnet_ether_addr get_mac_addr(uint32_t ip_addr) {
     
     printf("Sent ARP request, analyzing replies\n");
     
-    if ((s = pcap_loop(handle, -1, process_reply, NULL)) < 0) {
+    if ((s = pcap_loop(handle, -1, process_packet, NULL)) < 0) {
         if (s == -1) {
             fprintf(stderr, "%s", pcap_geterr(handle));
             exit(1);
         }
     }
     libnet_clear_packet(l);
-
 }
+
+
+void process_packet() {
+}
+
+
+void arp_spoof() {
+}
+
