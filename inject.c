@@ -139,6 +139,29 @@ void get_mac_addr(uint32_t ip_addr, struct libnet_ether_addr *mac) {
 
 
 void process_packet() {
+
+    if (ntohs(eth_hdr->ether_type) == ETHERTYPE_ARP) {
+        arp_packet = (struct ether_arp *)(packet + (ETHER_ADDR_LEN+ETHER_ADDR_LEN+2));
+    
+        if (ntohs (arp_packet->ea_hdr.ar_op) == 2 && !memcmp (&ip_tmp, arp_packet->arp_spa, 4)) {
+
+			memcpy (mac_tmp.ether_addr_octet, eth_header->ether_shost, 6);
+
+			printf ("Target: %d.%d.%d.%d is at: %02x:%02x:%02x:%02x:%02x:%02x\n",
+					arp_packet->arp_spa[0],
+					arp_packet->arp_spa[1],
+					arp_packet->arp_spa[2],
+					arp_packet->arp_spa[3],
+
+					mac_tmp.ether_addr_octet[0],
+					mac_tmp.ether_addr_octet[1],
+					mac_tmp.ether_addr_octet[2],
+					mac_tmp.ether_addr_octet[3],
+					mac_tmp.ether_addr_octet[4],
+					mac_tmp.ether_addr_octet[5]);
+
+			pcap_breakloop (handle);
+    }    
 }
 
 
