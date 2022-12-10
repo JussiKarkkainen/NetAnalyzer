@@ -1,16 +1,19 @@
 #include "inject.h"
+#include "headers.h"
 #include <stdio.h>
 #include <pcap.h>
 #include <libnet.h>
 #include <string.h>
 #include <stdint.h>
+#include <netinet/in.h>
 
 libnet_t *l;
 
 pcap_t *handle;
 uint32_t ip_tmp;
+struct libnet_ether_addr mac_tmp;
 
-void process_packet(void); 
+void process_arp_packet(uint8_t*, const struct pcap_pkthdr*, const uint8_t*); 
 void get_mac_addr(uint32_t, struct libnet_ether_addr*);
 
 int initialize_inject(char *gateway_ip, char *target_ip) {
@@ -84,8 +87,13 @@ int initialize_inject(char *gateway_ip, char *target_ip) {
 	pcap_freecode(&fp);
     
     // Get MAC address of both targets.
-    get_mac_addr(target_one_ip, own_mac);
-    get_mac_addr(target_two_ip, own_mac);
+    struct libnet_ether_addr mac_target_one, mac_target_two;
+    ip_tmp = target_one_ip;
+    get_mac_addr(ip, own_mac);
+    mac_target_one = mac_tmp;
+    ip_tmp = target_two_ip;
+    get_mac_addr(ip, own_mac);
+    mac_target_two = mac_tmp;
     
 
     return 0;
@@ -127,8 +135,7 @@ void get_mac_addr(uint32_t ip_addr, struct libnet_ether_addr *mac) {
     }
     
     printf("Sent ARP request, analyzing replies\n");
-    
-    if ((s = pcap_loop(handle, -1, process_packet, NULL)) < 0) {
+    if ((s = pcap_loop(handle, -1, process_arp_packet, NULL)) < 0) {
         if (s == -1) {
             fprintf(stderr, "%s", pcap_geterr(handle));
             exit(1);
@@ -138,20 +145,24 @@ void get_mac_addr(uint32_t ip_addr, struct libnet_ether_addr *mac) {
 }
 
 
-void process_packet() {
+void process_arp_packet(uint8_t *user, const struct pcap_pkthdr *hdr, const uint8_t *packet) {
 
+    struct ethernet_header *eth_hdr;
+    struct arp_header *arp_packet;
+
+    eth_hdr = (struct ethernet_header *)packet;
     if (ntohs(eth_hdr->ether_type) == ETHERTYPE_ARP) {
-        arp_packet = (struct ether_arp *)(packet + (ETHER_ADDR_LEN+ETHER_ADDR_LEN+2));
-    
-        if (ntohs (arp_packet->ea_hdr.ar_op) == 2 && !memcmp (&ip_tmp, arp_packet->arp_spa, 4)) {
+        arp_packet = (struct arp_header *)(packet + (ETHER_ADDR_LEN+ETHER_ADDR_LEN+2));
+        // Test is arp packet is a reply and the sender of the reply is the target memcmp returns 0 if equal)
+        if (ntohs(arp_packet->opcode) == 2 && !memcmp(&ip_tmp, arp_packet->spa, 4)) {
 
-			memcpy (mac_tmp.ether_addr_octet, eth_header->ether_shost, 6);
+			memcpy(mac_tmp.ether_addr_octet, eth_hdr->saddr, 6);
 
-			printf ("Target: %d.%d.%d.%d is at: %02x:%02x:%02x:%02x:%02x:%02x\n",
-					arp_packet->arp_spa[0],
-					arp_packet->arp_spa[1],
-					arp_packet->arp_spa[2],
-					arp_packet->arp_spa[3],
+			printf("Target: %d.%d.%d.%d is at: %02x:%02x:%02x:%02x:%02x:%02x\n",
+					arp_packet->spa[0],
+					arp_packet->spa[1],
+					arp_packet->spa[2],
+					arp_packet->spa[3],
 
 					mac_tmp.ether_addr_octet[0],
 					mac_tmp.ether_addr_octet[1],
@@ -161,6 +172,7 @@ void process_packet() {
 					mac_tmp.ether_addr_octet[5]);
 
 			pcap_breakloop (handle);
+        }
     }    
 }
 
