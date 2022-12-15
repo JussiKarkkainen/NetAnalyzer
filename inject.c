@@ -102,8 +102,11 @@ int initialize_inject(char *gateway_ip, char *target_ip) {
     while (1) {
         arp_spoof(target_one_ip, target_two_ip, mac_target_one, own_mac);
         arp_spoof(target_two_ip, target_one_ip, mac_target_two, own_mac);
-        sleep(10);
+        sleep(1);
     }    
+    
+    pcap_close(handle);
+    libnet_destroy(l);
 
     return 0;
 }
@@ -215,3 +218,10 @@ void arp_spoof(uint32_t ip_target, uint32_t ip_spoof, struct libnet_ether_addr m
 
 }
 
+
+void redirect_packet(uint32_t ip_target_one, uint32_t ip_target_two, struct libnet_ether_addr mac_target_one, 
+                     struct libnet_ether_addr mac_target_two, struct libnet_ether_addr *own_mac) {
+    // Listens for packets and redirects them to correct address
+    
+    printf("Redirecting packets\n");    
+}
