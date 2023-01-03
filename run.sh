@@ -2,7 +2,7 @@ if [ -e netanalyzer ]
 then
     rm netanalyzer
 fi
-gcc main.c sniffer.c inject.c utils.c -o netanalyzer -lpcap -lnet
+gcc main.c sniffer.c inject_new.c utils.c -o netanalyzer -lpcap -lnet
 sudo setcap cap_net_admin,cap_net_raw=eip netanalyzer
 if [[ $# -eq 3 ]]
 then

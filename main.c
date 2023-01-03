@@ -16,6 +16,10 @@ int main(int argc, char *argv[]) {
         ret = initialize_sniffer();
     }
     else if (strcmp(argv[1], "-i") == 0) {
+        if (argc < 4) {
+            printf("Invalid number of arguments.\nUsage: %s -i [Target one IP] [Target two IP]\n", argv[0]);
+            return -1;
+        }
         ret = initialize_inject(argv[2], argv[3]);
     }
     else {
