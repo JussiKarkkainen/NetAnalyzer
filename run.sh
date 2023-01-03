@@ -4,9 +4,9 @@ then
 fi
 gcc main.c sniffer.c inject_new.c utils.c -o netanalyzer -lpcap -lnet
 sudo setcap cap_net_admin,cap_net_raw=eip netanalyzer
-if [[ $# -eq 3 ]]
+if [[ $# -eq 6 ]]
 then
-    ./netanalyzer $1 $2 $3
+    ./netanalyzer $1 $2 $3 $4 $5 $6
 elif [[ $# -eq 1 ]]
     then
         ./netanalyzer $1
