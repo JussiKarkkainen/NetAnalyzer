@@ -74,7 +74,7 @@ int str_to_mac(const char *mac_str, uint8_t *mac) {
 
     int num_octets = sscanf(mac_str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
                          &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-    if (num_octets != MAC_LEN) {
+    if (num_octets != 6) {
         return -1;
     }
 
