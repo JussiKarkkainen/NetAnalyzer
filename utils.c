@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <netinet/in.h> 
 #include <netdb.h>
+#include <string.h>
 
 struct ip_proto_dict {
     char *key;
@@ -66,3 +67,16 @@ void print_data(uint8_t *data, ssize_t size) {
     }
 }
 
+int str_to_mac(const char *mac_str, uint8_t *mac) {
+    if (mac_str == NULL || mac == NULL) {
+        return -1;
+    }
+
+    int num_octets = sscanf(mac_str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+                         &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+    if (num_octets != MAC_LEN) {
+        return -1;
+    }
+
+    return 0;
+}
