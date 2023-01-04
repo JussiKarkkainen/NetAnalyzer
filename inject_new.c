@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <net/ethernet.h>
 #include <linux/if_arp.h>
+#include <errno.h>
 #include "headers.h"
 #include "inject_new.h"
 #include "utils.h"
@@ -37,11 +38,10 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     
     uint8_t mac_addr_one[6];
     uint8_t mac_addr_two[6];
-
-    // Given the two IP addresses, find out the MAC addresses   
-    get_mac_addr(target_ip_one, my_ip, my_mac, interface, mac_addr_one);
-    get_mac_addr(target_ip_two, my_ip, my_mac, interface, mac_addr_two);
     
+    // Given the two IP addresses, find out the MAC addresses   
+    int mac_return_one = get_mac_addr(target_ip_one, my_ip, my_mac, interface, mac_addr_one);
+    int mac_return_two = get_mac_addr(target_ip_two, my_ip, my_mac, interface, mac_addr_two);
     
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
@@ -76,7 +76,7 @@ int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *if
     
     struct arp_header arp_hdr;
     arp_hdr.hardware_type = htons(1);
-    arp_hdr.protocol_type = htons(0x0800);
+    arp_hdr.protocol_type = htons(0x0806);
     arp_hdr.hardware_size = 6;
     arp_hdr.protocol_size = 4;
     arp_hdr.opcode = htons(ARP_REQUEST);         // ARP_REQUEST = 1, ARP_REPLY = 2
@@ -89,16 +89,13 @@ int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *if
     struct sockaddr_ll dest_addr = {0};
     dest_addr.sll_family = AF_PACKET;
     dest_addr.sll_protocol = htons(ETH_P_ARP);
-    dest_addr.sll_hatype = ARPHRD_ETHER;
-    dest_addr.sll_pkttype = PACKET_HOST;
     dest_addr.sll_ifindex = if_nametoindex(ifname);
-    dest_addr.sll_halen = 6;
+    dest_addr.sll_halen = ETHER_ADDR_LEN;
     
     if (dest_addr.sll_ifindex == 0) {
         perror("Error in if_nametoindex()");
         exit(1);
     }
-    
     
     uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     memcpy(dest_addr.sll_addr, broadcast_mac, 6);
@@ -110,13 +107,12 @@ int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *if
     }
 
     struct timeval tv;
-    tv.tv_sec = 1;
+    tv.tv_sec = 2;
     tv.tv_usec = 0;
     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0) {
         perror("Error: setsockopt()");
         exit(1);
     } 
-
 
     while (1) {
         int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
@@ -124,7 +120,6 @@ int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *if
             perror("sendto() failed");
             exit(1);
         }
-
         struct arp_header res;
         int bytes_recvd = recvfrom(sock, &res, sizeof(struct arp_header), 0, NULL, NULL);
         if (bytes_recvd < 0) {
@@ -134,7 +129,6 @@ int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *if
             perror("recvfrom() failed");
             exit(1);
         }
-
         if (ntohs(res.opcode) == ARPOP_REPLY) {
             memcpy(mac_addr, res.sha, 6);
             close(sock);
