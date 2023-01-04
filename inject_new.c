@@ -5,8 +5,8 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <sys/socket.h>
-#include <netpacket/packet.h>
 #include <net/ethernet.h>
+#include <linux/if_arp.h>
 #include "headers.h"
 #include "inject_new.h"
 #include "utils.h"
@@ -40,7 +40,12 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     uint8_t *mac_addr_two = get_mac_addr(target_ip_two, my_ip, my_mac, interface);
 
     
-    printf("MAC addresses found\n");
+    printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+            mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
+            mac_addr_one[4], mac_addr_one[5]);
+    printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+            mac_addr_two[0], mac_addr_two[1], mac_addr_two[2], mac_addr_two[3],
+            mac_addr_two[4], mac_addr_two[5]);
 
     // Construct ARP Packets for spoofing
     
@@ -75,53 +80,55 @@ uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, cha
     
     memcpy(arp_hdr.sha, own_mac, 6);
     memcpy(arp_hdr.spa, &own_ip, 4);
-    memcpy(arp_hdr.tha, 0, 6);
+    memset(arp_hdr.tha, 0, 6);
     memcpy(arp_hdr.tpa, &target_ip, 4);
     
     struct sockaddr_ll dest_addr = {0};
     dest_addr.sll_family = AF_PACKET;
     dest_addr.sll_protocol = htons(ETH_P_ARP);
+    dest_addr.sll_hatype = ARPHRD_ETHER;
+    dest_addr.sll_pkttype = PACKET_HOST;
     dest_addr.sll_ifindex = if_nametoindex(ifname);
     dest_addr.sll_halen = 6;
+    
+    if (dest_addr.sll_ifindex == 0) {
+        perror("Error in if_nametoindex()");
+        exit(1);
+    }
+    
     
     uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     memcpy(dest_addr.sll_addr, broadcast_mac, 6);
     
-    int sock = socket(AF_INET, SOCK_RAW, htons(ETH_P_ALL));
+    int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
     if (sock == -1) {
         perror("Error: socket()");
         exit(1);
     }
 
-    if (bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0) {
-        perror("bind failed");
-        exit(1);
-    }
-
-    struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-    
-    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-        perror("setsockopt failed");
-        exit(1);
-    }
-
-    int bytes_sent = sendto(sock, req, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (bytes_sent < 0) {
-        perror("sendto failed");
+        perror("sendto() failed");
         exit(1);
     }
     
-    int bytes_recvd = recvfrom(sock, res, sizeof(struct arp_header), 0, NULL, NULL);
+    struct arp_header res;
+
+    int bytes_recvd = recvfrom(sock, &res, sizeof(struct arp_header), 0, NULL, NULL);
     if (bytes_recvd < 0) {
+        perror("recvfrom() failed");
         exit(1);
     }
-    return bytes_recvd;
+     
+    uint8_t *mac_addr = res.sha; 
+    
+    close(sock);
+
+    return mac_addr;
 }
 
 void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) { 
-    
+/*    
     struct ethernet_header *eth_hdr = malloc(sizeof(struct ethernet_header));
     struct arp_header *arp_hdr = malloc(sizeof(struct arp_header));
     
@@ -148,6 +155,7 @@ void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) {
         perror("Error in sendto(): ");
         exit(1);
     }
+  */
     uint32_t ip_send = ip_target;
 
 }

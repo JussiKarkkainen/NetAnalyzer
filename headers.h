@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_ADDR_LEN 6
+#define MAC_LEN 6
 
 struct ip_header {
     int version : 4;
@@ -59,8 +59,8 @@ struct icmp_header {
 }__attribute__((packed));
 
 struct ethernet_header {
-    uint8_t daddr[MAX_ADDR_LEN];
-    uint8_t saddr[MAX_ADDR_LEN];
+    uint8_t daddr[MAC_LEN];
+    uint8_t saddr[MAC_LEN];
     uint16_t ether_type;
 }__attribute__((packed));
 
@@ -70,10 +70,10 @@ struct arp_header {
     uint8_t hardware_size;
     uint8_t protocol_size;
     uint16_t opcode;
-    uint8_t sha[MAX_ADDR_LEN];
-    uint8_t spa[MAX_ADDR_LEN];
-    uint8_t tha[MAX_ADDR_LEN];
-    uint8_t tpa[MAX_ADDR_LEN];
+    uint8_t sha[MAC_LEN];
+    uint8_t spa[MAC_LEN];
+    uint8_t tha[MAC_LEN];
+    uint8_t tpa[MAC_LEN];
 }__attribute__((packed));
 
 #endif
