@@ -72,7 +72,7 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
 }
 
 
-uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
+void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
     
     struct arp_header arp_hdr;
     arp_hdr.hardware_type = htons(1);
