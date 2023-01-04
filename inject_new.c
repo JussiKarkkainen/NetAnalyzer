@@ -109,6 +109,14 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
         exit(1);
     }
 
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0) {
+        perror("Error: setsockopt()");
+        exit(1);
+    } 
+
     int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (bytes_sent < 0) {
         perror("sendto() failed");
