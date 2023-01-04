@@ -15,7 +15,7 @@ For passively sniffing network packets:
 
 For performing ARP spoofing and sniffing packets:
 ```
-./run.sh -i [1. Target IP] [2. Target IP]
+./run.sh -i [Own IP] [Own MAC] [Interface] [Target one IP] [Target two IP]
 ```
 
 ### Example output:
