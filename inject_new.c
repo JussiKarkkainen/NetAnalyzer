@@ -72,7 +72,7 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
 }
 
 
-void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
+int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
     
     struct arp_header arp_hdr;
     arp_hdr.hardware_type = htons(1);
@@ -117,6 +117,37 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
         exit(1);
     } 
 
+
+    while (1) {
+        int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+        if (bytes_sent < 0) {
+            perror("sendto() failed");
+            exit(1);
+        }
+
+        struct arp_header res;
+        int bytes_recvd = recvfrom(sock, &res, sizeof(struct arp_header), 0, NULL, NULL);
+        if (bytes_recvd < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue;
+            }
+            perror("recvfrom() failed");
+            exit(1);
+        }
+
+        if (ntohs(res.opcode) == ARPOP_REPLY) {
+            memcpy(mac_addr, res.sha, 6);
+            close(sock);
+            return 0;
+        }
+    }
+
+    perror("Unable to find target MAC addresses");
+    exit(1);
+}
+
+
+/*
     int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (bytes_sent < 0) {
         perror("sendto() failed");
@@ -136,8 +167,9 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     }
     printf("Unable to find target MAC addresses\n");
     exit(1);
+    
 }
-
+*/
 void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) { 
 /*    
     struct ethernet_header *eth_hdr = malloc(sizeof(struct ethernet_header));
