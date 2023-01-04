@@ -93,7 +93,6 @@ uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, cha
         exit(1);
     }
 
-    
     if (bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0) {
         perror("bind failed");
         exit(1);
