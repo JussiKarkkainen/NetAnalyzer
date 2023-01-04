@@ -34,11 +34,14 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     str_to_mac(own_mac, my_mac);
     
     printf("finding MAC addresses of targets\n");
+    
+    uint8_t mac_addr_one[6];
+    uint8_t mac_addr_two[6];
 
     // Given the two IP addresses, find out the MAC addresses   
-    uint8_t *mac_addr_one = get_mac_addr(target_ip_one, my_ip, my_mac, interface);
-    uint8_t *mac_addr_two = get_mac_addr(target_ip_two, my_ip, my_mac, interface);
-
+    get_mac_addr(target_ip_one, my_ip, my_mac, interface, mac_addr_one);
+    get_mac_addr(target_ip_two, my_ip, my_mac, interface, mac_addr_two);
+    
     
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
@@ -69,7 +72,7 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
 }
 
 
-uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname) {
+uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
     
     struct arp_header arp_hdr;
     arp_hdr.hardware_type = htons(1);
@@ -100,7 +103,7 @@ uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, cha
     uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     memcpy(dest_addr.sll_addr, broadcast_mac, 6);
     
-    int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_IP));
+    int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
     if (sock == -1) {
         perror("Error: socket()");
         exit(1);
@@ -119,12 +122,12 @@ uint8_t *get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, cha
         perror("recvfrom() failed");
         exit(1);
     }
-     
-    uint8_t *mac_addr = res.sha; 
-    
-    close(sock);
-
-    return mac_addr;
+    if (ntohs(res.opcode) == ARPOP_REPLY) { 
+        memcpy(mac_addr, res.sha, 6);
+        close(sock);
+    }
+    printf("Unable to find target MAC addresses\n");
+    exit(1);
 }
 
 void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) { 
