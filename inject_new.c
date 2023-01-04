@@ -143,8 +143,12 @@ void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) {
     memcpy(eth_hdr->saddr, src_mac, 6);
     
     eth_hdr->ether_type = AF_INET; 
-    
-
+   
+    if ((sendto(sd, ethernet_packet, sizeof(struct arp_header) + sizeof(struct ethernet_header), 0,
+                    (const struct sockaddr *)device, sizeof(*device))) <= 0) {
+        perror("Error in sendto(): ");
+        exit(1);
+    }
     uint32_t ip_send = ip_target;
 
 }
