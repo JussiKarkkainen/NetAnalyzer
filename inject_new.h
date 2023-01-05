@@ -5,7 +5,7 @@
 
 #define ARP_REQUEST 1
 
-int get_mac_addr(uint32_t, uint32_t, uint8_t *, char *, uint8_t *); 
+void get_mac_addr(uint32_t, uint32_t, uint8_t *, char *, uint8_t *); 
 void arp_spoof(uint32_t, uint32_t);
 
 #endif
