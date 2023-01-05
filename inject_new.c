@@ -74,48 +74,45 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
 
 int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
     
-    struct arp_header arp_hdr;
-    arp_hdr.hardware_type = htons(1);
-    arp_hdr.protocol_type = htons(0x0806);
-    arp_hdr.hardware_size = 6;
-    arp_hdr.protocol_size = 4;
-    arp_hdr.opcode = htons(ARP_REQUEST);         // ARP_REQUEST = 1, ARP_REPLY = 2
-    
-    memcpy(arp_hdr.sha, own_mac, 6);
-    memcpy(arp_hdr.spa, &own_ip, 4);
-    memset(arp_hdr.tha, 0, 6);
-    memcpy(arp_hdr.tpa, &target_ip, 4);
-    
-    struct sockaddr_ll dest_addr = {0};
-    dest_addr.sll_family = AF_PACKET;
-    dest_addr.sll_protocol = htons(ETH_P_ARP);
-    dest_addr.sll_ifindex = if_nametoindex(ifname);
-    dest_addr.sll_halen = ETHER_ADDR_LEN;
-    
-    if (dest_addr.sll_ifindex == 0) {
-        perror("Error in if_nametoindex()");
+    struct arp_header *arp_hdr;
+    if (!(arp_hdr = malloc(sizeof(struct arp_header)))) {
+        perror("Error in malloc");
         exit(1);
     }
     
-    uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    memcpy(dest_addr.sll_addr, broadcast_mac, 6);
+    arp_hdr->hardware_type = htons(1);
+    arp_hdr->protocol_type = htons(ETH_P_IP);
+    arp_hdr->hardware_size = 6;
+    arp_hdr->protocol_size = 4;
+    arp_hdr->opcode = htons(ARPOP_REQUEST);         // ARP_REQUEST = 1, ARP_REPLY = 2
     
+    memcpy(arp_hdr->sha, own_mac, 6);
+    memcpy(arp_hdr->spa, &own_ip, 4);
+    memset(arp_hdr->tha, 0, 6);
+    memcpy(arp_hdr->tpa, &target_ip, 4);
+    
+
+    uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+       
+    struct ethernet_header *eth_hdr;
+    if (!(eth_hdr = malloc(sizeof(struct arp_header)))) {
+        perror("Error in malloc");
+        exit(1);
+    }
+    
+    memcpy(eth_hdr->daddr, broadcast_mac, 6);
+    memcpy(eth_hdr->saddr, own_mac, 6);
+    eth_hdr->ether_type = htons(ETH_P_ARP);
+    memcpy((eth_hdr + ETH_HDR_LEN), arp_hdr, ARP_HDR_LEN);
+
     int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
     if (sock == -1) {
         perror("Error: socket()");
         exit(1);
     }
-
-    struct timeval tv;
-    tv.tv_sec = 2;
-    tv.tv_usec = 0;
-    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0) {
-        perror("Error: setsockopt()");
-        exit(1);
-    } 
-
+    
     while (1) {
-        int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+        int bytes_sent = sendto(sock, eth_hdr, (ETH_HDR_LEN + ARP_HDR_LEN), 0, (struct sockaddr *)device, sizeof(*device));
         if (bytes_sent < 0) {
             perror("sendto() failed");
             exit(1);
@@ -141,29 +138,6 @@ int get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *if
 }
 
 
-/*
-    int bytes_sent = sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    if (bytes_sent < 0) {
-        perror("sendto() failed");
-        exit(1);
-    }
-    
-    struct arp_header res;
-
-    int bytes_recvd = recvfrom(sock, &res, sizeof(struct arp_header), 0, NULL, NULL);
-    if (bytes_recvd < 0) {
-        perror("recvfrom() failed");
-        exit(1);
-    }
-    if (ntohs(res.opcode) == ARPOP_REPLY) { 
-        memcpy(mac_addr, res.sha, 6);
-        close(sock);
-    }
-    printf("Unable to find target MAC addresses\n");
-    exit(1);
-    
-}
-*/
 void arp_spoof(uint32_t ip_target, uint32_t ip_spoof) { 
 /*    
     struct ethernet_header *eth_hdr = malloc(sizeof(struct ethernet_header));

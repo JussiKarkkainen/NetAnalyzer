@@ -4,6 +4,8 @@
 #include <stdint.h>
 
 #define MAC_LEN 6
+#define ETH_HDR_LEN 14
+#define ARP_HDR_LEN 28
 
 struct ip_header {
     int version : 4;
