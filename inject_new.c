@@ -98,7 +98,7 @@ int send_packet(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifn
     arp_hdr->protocol_type = htons(ETH_P_IP);
     arp_hdr->hardware_size = 6;
     arp_hdr->protocol_size = 4;
-    arp_hdr->opcode = htons(ARPOP_REPLY);         // ARP_REQUEST = 1, ARP_REPLY = 2
+    arp_hdr->opcode = htons(ARPOP_REQUEST);         // ARP_REQUEST = 1, ARP_REPLY = 2
     
     memcpy(arp_hdr->sha, own_mac, 6);
     memcpy(arp_hdr->spa, &own_ip, 4);
@@ -174,8 +174,15 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
         if (ntohs(eth_res_hdr->ether_type) != ETH_P_ARP || bytes_recvd == 0)
             continue;
         
-        // Arp header is wrong
         arp_res_hdr = (struct arp_header *)(buffer + ETH_HDR_LEN);
+        uint32_t from_addr = (arp_res_hdr->spa[3] << 24)
+                           | (arp_res_hdr->spa[2] << 16)
+                           | (arp_res_hdr->spa[1] << 8)
+                           | (arp_res_hdr->spa[0] << 0);
+        
+        if (from_addr != target_ip)
+            continue;
+
         if (ntohs(arp_res_hdr->opcode) == ARPOP_REPLY) { 
             memcpy(mac_addr, arp_res_hdr->sha, 6);
             close(sock);
