@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#define IP_LEN 4
 #define MAC_LEN 6
 #define ETH_HDR_LEN 14
 #define ARP_HDR_LEN 28
@@ -73,9 +74,9 @@ struct arp_header {
     uint8_t protocol_size;
     uint16_t opcode;
     uint8_t sha[MAC_LEN];
-    uint8_t spa[MAC_LEN];
+    uint8_t spa[IP_LEN];
     uint8_t tha[MAC_LEN];
-    uint8_t tpa[MAC_LEN];
+    uint8_t tpa[IP_LEN];
 }__attribute__((packed));
 
 #endif

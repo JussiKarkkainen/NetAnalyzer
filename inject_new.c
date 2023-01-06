@@ -44,13 +44,13 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     uint8_t mac_addr_two[6];
     
     // Given the two IP addresses, find out the MAC addresses   
-    get_mac_addr(target_ip_two, my_ip, my_mac, interface, mac_addr_two);
+    get_mac_addr(target_ip_one, my_ip, my_mac, interface, mac_addr_one);
     
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_two[0], mac_addr_two[1], mac_addr_two[2], mac_addr_two[3],
             mac_addr_two[4], mac_addr_two[5]);
     
-    get_mac_addr(target_ip_one, my_ip, my_mac, interface, mac_addr_one);
+    get_mac_addr(target_ip_two, my_ip, my_mac, interface, mac_addr_two);
    
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
@@ -105,17 +105,16 @@ int send_packet(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifn
     memcpy(arp_hdr->tpa, &target_ip, 4);
     
     uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    
     // Set depending on get_mac_addr value
     if (get_mac_addr) {
         memset(arp_hdr->tha, 0, 6);
-        memcpy(&eth_hdr->daddr, broadcast_mac, 6);
+        memcpy(eth_hdr->daddr, broadcast_mac, 6);
     } else {
         memset(arp_hdr->tha, target_ip, 6);
-        memcpy(&eth_hdr->daddr, mac_addr, 6);
+        memcpy(eth_hdr->daddr, mac_addr, 6);
     }
 
-    memcpy(&eth_hdr->saddr, own_mac, 6);
+    memcpy(eth_hdr->saddr, own_mac, 6);
     memcpy(&eth_hdr->ether_type, (uint8_t[2]){ETH_P_ARP / 256, ETH_P_ARP % 256}, 2); // 0x0806 ARP
     memcpy((uint8_t *)eth_hdr + ETH_HDR_LEN, arp_hdr, ARP_HDR_LEN);
 
@@ -165,16 +164,17 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
 
     while (1) {
         struct arp_header res;
-        int bytes_recvd = recvfrom(sock, buffer, IP_MAXPACKET, 0, NULL, NULL);
+        int bytes_recvd = recvfrom(sock, buffer, IP_MAXPACKET, 0, NULL, NULL); // 0, Null, Null
         if (bytes_recvd < 0) {
             perror("recvfrom() failed");
             exit(1);
         }
-        
+         
         eth_res_hdr = (struct ethernet_header *)buffer;
-        if (ntohs(eth_res_hdr->ether_type) != ETH_P_ARP)
+        if (ntohs(eth_res_hdr->ether_type) != ETH_P_ARP || bytes_recvd == 0)
             continue;
         
+        // Arp header is wrong
         arp_res_hdr = (struct arp_header *)(buffer + ETH_HDR_LEN);
         if (ntohs(arp_res_hdr->opcode) == ARPOP_REPLY) { 
             memcpy(mac_addr, arp_res_hdr->sha, 6);
