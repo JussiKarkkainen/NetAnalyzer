@@ -73,22 +73,12 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
 
     // Construct ARP Packets for spoofing
     
-
-    // Start the spoofing and analyze packets    
-
     printf("Starting spoofing\n");
-    uint32_t target_one_ip;
-    uint32_t target_two_ip;
-    struct arp_header *arp_hdr;
-    /* 
-    // 1 = broadcast, 0 = spoof 
-    int spoof = 0;
     while (1) {
-        send_packet(target_one_ip, my_ip, my_mac, ifname, mac_addr_one, spoof, arp_hdr, eth_hdr);
-        send_packet(target_two_ip, my_ip, my_mac, ifname, mac_addr_two, spoof, arp_hdr, eth_hdr); 
+        arp_spoof(mac_addr_one, my_mac, target_ip_one, ifname);
+        arp_spoof(mac_addr_two, my_mac, target_ip_two, ifname);
         sleep(2);
     }    
-    */
     return 0;
 }
 
@@ -164,8 +154,7 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     close(sock);
 }
 
-void arp_spoof(uint8_t *target_one_mac, uint8_t *target_two_mac, uint8_t *own_mac
-               uint32_t target_one_ip, uint32_t target_two_ip, char *ifname);
+void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t target_ip, char *ifname);
 
     int sock = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
     if (sock == -1) {
