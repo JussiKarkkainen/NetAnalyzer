@@ -64,7 +64,7 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     get_mac_addr(target_ip_two, my_ip, my_mac, interface, &arp_hdr_two);
     
     uint8_t mac_addr_two[MAC_LEN];
-    memcpy(mac_addr_one, arp_hdr_two.sha, MAC_LEN); 
+    memcpy(mac_addr_two, arp_hdr_two.sha, MAC_LEN); 
    
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_two[0], mac_addr_two[1], mac_addr_two[2], mac_addr_two[3],
