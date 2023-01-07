@@ -104,20 +104,7 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     const uint8_t broadcast_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     
     struct ifreq ifr;
-    uint32_t name_len = strlen(ifname);
-    if (name_len < sizeof(ifr.ifr_name)) {
-        memcpy(ifr.ifr_name, ifname, name_len);
-        ifr.ifr_name[name_len] = 0;
-    } else {
-        perror("Interface name is too long");
-        exit(1);
-    }
-    
-    if (ioctl(sock, SIOCGIFINDEX, (void *)&ifr) == -1) {
-        fprintf(stderr, "ioctl: flags %d errno %d/%s\n", SIOCGIFINDEX, errno, strerror(errno));
-        perror("Error in ioctl()");
-        exit(1);
-    }
+    set_ifr(&ifr, ifname);    
     
     struct sockaddr_ll addr = {0};
     addr.sll_family = AF_PACKET;
@@ -177,4 +164,31 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     close(sock);
 }
 
+void arp_spoof(uint8_t *target_one_mac, uint8_t *target_two_mac, uint8_t *own_mac
+               uint32_t target_one_ip, uint32_t target_two_ip, char *ifname);
+
+    struct arp_header arp_hdr;
+    struct ifreq ifr;
+    
+    set_ifr(&ifr, ifname);    
+
+}
+
+void set_ifr(struct ifreg *ifr, char *ifname) {
+
+    int name_len = strlen(ifname); 
+    if (name_len < sizeof(ifr.ifr_name)) {
+        memcpy(ifr.ifr_name, ifname, name_len);
+        ifr.ifr_name[name_len] = 0;
+    } else {
+        perror("Interface name is too long");
+        exit(1);
+    }
+    
+    if (ioctl(sock, SIOCGIFINDEX, (void *)&ifr) == -1) {
+        fprintf(stderr, "ioctl: flags %d errno %d/%s\n", SIOCGIFINDEX, errno, strerror(errno));
+        perror("Error in ioctl()");
+        exit(1);
+    }
+}
 
