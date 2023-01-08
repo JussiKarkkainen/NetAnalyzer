@@ -2,14 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/ethernet.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <sys/socket.h>
-#include <net/ethernet.h>
-#include <netinet/ip.h>
-#include <linux/if_arp.h>
-#include <errno.h>
-#include <sys/ioctl.h>
+#include <netinet/if_ether.h>
+#include <netpacket/packet.h>
 #include "headers.h"
 #include "inject_new.h"
 #include "utils.h"
@@ -50,21 +51,20 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     printf("finding MAC addresses of targets\n");
     
     // Given the two IP addresses, find out the MAC addresses   
-    struct arp_header arp_hdr_one; 
-    get_mac_addr(target_ip_one, my_ip, my_mac, interface, &arp_hdr_one);
+    struct arp_header arp_hdr; 
+    get_mac_addr(target_ip_one, my_ip, my_mac, interface, &arp_hdr);
     
     uint8_t mac_addr_one[MAC_LEN];
-    memcpy(mac_addr_one, arp_hdr_one.sha, MAC_LEN); 
+    memcpy(mac_addr_one, arp_hdr.sha, MAC_LEN); 
 
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
             mac_addr_one[4], mac_addr_one[5]);
     
-    struct arp_header arp_hdr_two; 
-    get_mac_addr(target_ip_two, my_ip, my_mac, interface, &arp_hdr_two);
+    get_mac_addr(target_ip_two, my_ip, my_mac, interface, &arp_hdr);
     
     uint8_t mac_addr_two[MAC_LEN];
-    memcpy(mac_addr_two, arp_hdr_two.sha, MAC_LEN); 
+    memcpy(mac_addr_two, arp_hdr.sha, MAC_LEN); 
    
     printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
             mac_addr_two[0], mac_addr_two[1], mac_addr_two[2], mac_addr_two[3],
