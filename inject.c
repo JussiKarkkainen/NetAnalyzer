@@ -11,7 +11,7 @@
 #include <netinet/if_ether.h>
 #include <netpacket/packet.h>
 #include "headers.h"
-#include "inject_new.h"
+#include "inject.h"
 #include "utils.h"
 
 int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, const char *own_mac, char *ifname) {
