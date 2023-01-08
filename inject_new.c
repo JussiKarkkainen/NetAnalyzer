@@ -25,23 +25,22 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     printf("Initializing inject\n");
     
     // Convert IP address strings to numerical form
-    printf("Target IP one: %s\n", gateway_ip);
-    printf("Target IP two: %s\n", target_ip);
-    /* 
-    target_ip_one = (uint32_t)inet_addr(gateway_ip);
-    target_ip_two = (uint32_t)inet_addr(target_ip);
-    my_ip = (uint32_t)inet_addr(target_ip);
-    */
-    if (!inet_aton(target_ip, &ip_addr))
+    if (!inet_aton(target_ip, &ip_addr)) {
         perror("Error in inet_aton()");
+        exit(1);
+    }
     target_ip_one = ip_addr.s_addr;
     
-    if (!inet_aton(gateway_ip, &ip_addr))
+    if (!inet_aton(gateway_ip, &ip_addr)) {
         perror("Error in inet_aton()");
+        exit(1);
+    }
     target_ip_two = ip_addr.s_addr;
     
-    if (!inet_aton(own_ip, &ip_addr))
+    if (!inet_aton(own_ip, &ip_addr)) {
         perror("Error in inet_aton()");
+        exit(1);
+    }
     my_ip = ip_addr.s_addr;
      
     // Convert own mac to numerical form
@@ -56,7 +55,7 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     uint8_t mac_addr_one[MAC_LEN];
     memcpy(mac_addr_one, arp_hdr.sha, MAC_LEN); 
 
-    printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+    printf("MAC address found for IP address %s -> %02x:%02x:%02x:%02x:%02x:%02x\n", target_ip, 
             mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
             mac_addr_one[4], mac_addr_one[5]);
     
@@ -65,7 +64,7 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     uint8_t mac_addr_two[MAC_LEN];
     memcpy(mac_addr_two, arp_hdr.sha, MAC_LEN); 
    
-    printf("MAC addresses found: %02x:%02x:%02x:%02x:%02x:%02x\n", 
+    printf("MAC address found for IP address %s -> %02x:%02x:%02x:%02x:%02x:%02x\n", gateway_ip,
             mac_addr_two[0], mac_addr_two[1], mac_addr_two[2], mac_addr_two[3],
             mac_addr_two[4], mac_addr_two[5]);
     
