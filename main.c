@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
     }
     if (strcmp(argv[1], "-s") == 0) {
         ret = initialize_sniffer();
-    }
+    }   
     else if (strcmp(argv[1], "-i") == 0) {
         if (argc != 7) {
             printf("Invalid number of arguments.\nUsage: %s -i [Own IP] [Own MAC] [Interface] [Target one IP] [Target two IP]\n", argv[0]);

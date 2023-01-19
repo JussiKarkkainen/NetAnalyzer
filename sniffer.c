@@ -1,5 +1,6 @@
 #include "headers.h"
 #include "utils.h"
+#include "sniffer.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,14 +11,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-void process_packet(uint8_t*, ssize_t);
-void analyze_tcp_packet(uint8_t*, ssize_t);
-void analyze_udp_packet(uint8_t*, ssize_t);
-void analyze_icmp_packet(uint8_t*, ssize_t);
-void analyze_ethernet_frame(uint8_t*, ssize_t);
-void analyze_ip_header(uint8_t*, ssize_t);
-
-int initialize_sniffer() {
+int initialize_sniffer(void) {
     
     fill_ip_table();   
     struct sockaddr saddr;
@@ -49,27 +43,33 @@ int initialize_sniffer() {
 
 void process_packet(uint8_t *buffer, ssize_t size) {
     printf("----------- Start of packet ----------- \n");
-    analyze_ethernet_frame(buffer, size);
-    struct ip_header *iphdr = (struct ip_header*)(buffer + sizeof(struct ethernet_header));
-    analyze_ip_header(buffer, size);
-    switch (iphdr->protocol) {
-        case 0x06:
-            analyze_tcp_packet(buffer, size);
-            break;
-        case 0x11:
-            analyze_udp_packet(buffer, size);
-            break;
-        case 0x01: 
-            analyze_icmp_packet(buffer, size);
-            break;
-        default:
-            printf("Unknown protocol type %x\n", iphdr->protocol);
+    int ret = analyze_ethernet_frame(buffer, size);
+    if (ret) {
+        analyze_arp_header(buffer, size);
+    } else {
+        struct ip_header *iphdr = (struct ip_header*)(buffer + sizeof(struct ethernet_header));
+        analyze_ip_header(buffer, size);
+        
+        switch (iphdr->protocol) {
+            case 0x06:
+                analyze_tcp_packet(buffer, size);
+                break;
+            case 0x11:
+                analyze_udp_packet(buffer, size);
+                break;
+            case 0x01: 
+                analyze_icmp_packet(buffer, size);
+                break;
+        }
     }
     printf("----------- End of packet ----------- \n\n");
 }
 
-void analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
+int analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
     struct ethernet_header *ethhdr = (struct ethernet_header*)buffer;
+    printf("|Ethernet protocol| -> 0x%x\n", ntohs(ethhdr->ether_type));
+    if (ntohs(ethhdr->ether_type) == 0x0806)
+        return 1;
     printf("\n");
     printf("----------- Ethernet header -----------\n");
     printf("|Source MAC address| -> %.2x:%.2x:%.2x:%.2x:%.2x:%.2x \n", ethhdr->saddr[0], ethhdr->saddr[1], 
@@ -78,10 +78,34 @@ void analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
     printf("|Destination MAC address| -> %.2x:%.2x:%.2x:%.2x:%.2x:%.2x \n", ethhdr->daddr[0], ethhdr->daddr[1], 
                                                                             ethhdr->daddr[2], ethhdr->daddr[3], 
                                                                             ethhdr->daddr[4], ethhdr->daddr[5]);
-    printf("|Ethernet protocol| -> %u\n", ethhdr->ether_type);
     printf("----------- End of Ethernet header -----------\n");
     printf("\n");
+    return 0;
 }
+
+void analyze_arp_header(uint8_t *buffer, ssize_t size) {
+    struct arp_header *arphdr = (struct arp_header *)(buffer + sizeof(struct ethernet_header));
+    struct sockaddr_in src_addr, dst_addr;
+    memcpy(&src_addr.sin_addr.s_addr, arphdr->spa, 4);
+    memcpy(&dst_addr.sin_addr.s_addr, arphdr->tpa, 4);
+    printf("\n");
+    printf("----------- ARP header -----------\n");
+    printf("|Hardware Type|  -> %u\n", arphdr->hardware_type);
+    printf("|Protocol Type|  -> %u\n", arphdr->protocol_type);
+    printf("|Hardware Size|  -> %u\n", arphdr->hardware_size);
+    printf("|Protocol Size|  -> %u\n", arphdr->protocol_size);
+    printf("|Opcode|  -> %u\n", arphdr->opcode);
+    printf("|Source MAC address| -> %.2x:%.2x:%.2x:%.2x:%.2x:%.2x \n", arphdr->sha[0], arphdr->sha[1], 
+                                                                       arphdr->sha[2], arphdr->sha[3], 
+                                                                       arphdr->sha[4], arphdr->sha[5]);
+    printf("|Source IP Address|  -> %s\n", inet_ntoa(src_addr.sin_addr));
+    printf("|Target MAC address| -> %.2x:%.2x:%.2x:%.2x:%.2x:%.2x \n", arphdr->tha[0], arphdr->tha[1], 
+                                                                       arphdr->tha[2], arphdr->tha[3], 
+                                                                       arphdr->tha[4], arphdr->tha[5]);
+    printf("|Target IP Address|  -> %s\n", inet_ntoa(dst_addr.sin_addr)); 
+    printf("----------- End of ARP header -----------\n");
+    printf("\n");
+} 
 
 void analyze_ip_header(uint8_t *buffer, ssize_t size) {
     struct ip_header *iphdr = (struct ip_header*)(buffer + sizeof(struct ethernet_header));
