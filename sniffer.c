@@ -67,7 +67,6 @@ void process_packet(uint8_t *buffer, ssize_t size) {
 
 int analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
     struct ethernet_header *ethhdr = (struct ethernet_header*)buffer;
-    printf("|Ethernet protocol| -> 0x%x\n", ntohs(ethhdr->ether_type));
     if (ntohs(ethhdr->ether_type) == 0x0806)
         return 1;
     printf("\n");
@@ -78,6 +77,7 @@ int analyze_ethernet_frame(uint8_t *buffer, ssize_t size) {
     printf("|Destination MAC address| -> %.2x:%.2x:%.2x:%.2x:%.2x:%.2x \n", ethhdr->daddr[0], ethhdr->daddr[1], 
                                                                             ethhdr->daddr[2], ethhdr->daddr[3], 
                                                                             ethhdr->daddr[4], ethhdr->daddr[5]);
+    printf("|Ethernet protocol| -> 0x%x\n", ntohs(ethhdr->ether_type));
     printf("----------- End of Ethernet header -----------\n");
     printf("\n");
     return 0;
