@@ -1,4 +1,5 @@
-# A Simple tool for analyzing network packets as well as performing ARP spoofing.
+# NetAnalyzer 
+A Simple tool for analyzing network packets as well as performing ARP spoofing.
 
 ## Usage
 ```
@@ -10,7 +11,7 @@ For passively sniffing network packets:
 ./run.sh -s
 ```
 
-For performing ARP spoofing and sniffing packets:
+For performing ARP spoofing:
 ```
 ./run.sh -i [Own IP] [Own MAC] [Interface] [Target one IP] [Target two IP]
 ```
